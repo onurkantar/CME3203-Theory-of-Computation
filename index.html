@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+
+	<p>Click the button to compute.</p>
+
+	<button onclick="main()">Compute</button>
+
+	<p id="input"></p>
+
+	<script>
+		function main() {
+
+			var STATES = [];
+			var temp_arr = [];
+			var user_input = prompt("Please enter your notation");//getting user notation
+			var test_input = prompt("Please enter your test case");//getting user's test notation
+
+			var postfix = postfixConverter(user_input);//transforming in-fix to post-fix
+			console.log(postfix);
+			process(postfix, STATES);//building the machine accoring to post-fix statements
+
+			alert(postfix);
+
+			letsGo(STATES[0], test_input, temp_arr);//testing the test input for the NFA
+
+
+		}
+		
+		function process(input, STATES) {//Processing the postfix states
+
+			for (let index = 0; index < input.length; index++) {
+				switch (input[index]) {
+					case "+":
+						union(STATES[STATES.length - 2], STATES[STATES.length - 1], STATES);
+						break;
+
+					case "*":
+						star(STATES[STATES.length - 1], STATES);
+						break;
+
+					case ".":
+						concat(STATES[STATES.length - 2], STATES[STATES.length - 1], STATES);
+						break;
+
+					default:
+						createOperand(STATES, input[index]);//creates a new state
+						break;
+				}
+
+			}
+
+
+
+		}
+
+		function calculateNextPossibleStates(state, statement) {
+
+			//@@@@@@@@@@@@@@@@@@@@
+			//+
+			//+
+			//+
+			//+
+			//+
+			//THIS IS THE BROKEN PART OF THIS CODE BE CAREFULL WHILE USING IT
+			//CALCULATING NEXT POSSIBLE STATES IS NOT WORKING WELL
+			//MIND THE DYNAMIC EPSILONS
+			//+
+			//+
+			//+
+			//+
+			//+
+			//@@@@@@@@@@@@@@@@@@@@
+
+
+			var potentialNext = state;
+			var dynamicEpsilons = [];
+			var DEPointer = 0;
+			while (true) {
+
+				for (let index = 0; index < potentialNext.exps.length; index++) {
+					if (potentialNext.exps[index] == statement) {
+						if (isRecursive(dynamicEpsilons, potentialNext.next[index])) {
+							dynamicEpsilons.push(potentialNext.next[index]);
+						}
+					}
+				}
+
+				if(statement != "epsilon"){
+
+				for (let index = 0; index < potentialNext.exps.length; index++) {
+					if (potentialNext.exps[index] == "epsilon") {
+						if (isRecursive(dynamicEpsilons, potentialNext.next[index])) {
+							dynamicEpsilons.push(potentialNext.next[index]);
+						}
+					}
+				}
+			}
+				if (dynamicEpsilons.length != DEPointer) {
+					potentialNext = dynamicEpsilons[DEPointer];
+					DEPointer++;
+				}
+				else {
+					break;
+				}
+			}
+			console.log(dynamicEpsilons);
+			return dynamicEpsilons;
+		}
+		function isRecursive(de, state) { 
+			for (let index = 0; index < de.length; index++) {
+				if (de[index] == state) {
+					return false;
+				}
+			}
+			return true;
+		}
+		function letsGo(firstState, test_input, temp_arr) {
+			var dynamicEpsilons = calculateNextPossibleStates(firstState, "epsilon");
+
+			if (dynamicEpsilons.length == 0) {
+				dynamicEpsilons = calculateNextPossibleStates(firstState, test_input[0]);
+			}
+
+			var test_input_pointer = 0;
+			var final_arr = [];
+			var count = 0;
+			while (true) {
+
+				for (let index = 0; index < dynamicEpsilons.length; index++) {
+
+					console.log(index);
+					
+					if (dynamicEpsilons[index].next.length != 0) {
+
+						for (let index2 = 0; index2 < dynamicEpsilons[index].exps.length; index2++) {
+
+							console.log(index2);
+							
+							if (dynamicEpsilons[index].exps[index2] == test_input[test_input_pointer]) {
+
+								var tempState = dynamicEpsilons[index].next[index2];
+								temp_arr.push(tempState);
+
+							}
+
+						}
+					}
+				}
+
+				for (let index = 0; index < temp_arr.length; index++) {
+
+					if (temp_arr[index].next.length == 0) {
+						final_arr.push(temp_arr[index]);
+						temp_arr[index] == null;
+					}
+
+
+				}
+
+				if (test_input.length == test_input_pointer + 1) {
+					for (let index = 0; index < temp_arr.length; index++) {
+						final_arr.push(temp_arr[index]);
+					}
+					break;
+				}
+				//IT ADDS THE STATES WHICH DO NOT HAVE NEXT STATES TO THE FINAL ARRAY THEN KILLS THAT STATES.
+
+				while (dynamicEpsilons.length != 0) {
+					dynamicEpsilons.pop();
+				}
+				
+				for (let index = 0; index < temp_arr.length; index++) {
+					var temp_di = calculateNextPossibleStates(temp_arr[index],test_input[test_input_pointer]);
+					for (let index2 = 0; index2 < temp_di.length; index2++) {
+						dynamicEpsilons.push(temp_di[index2]);
+					}
+
+				}
+
+				while (temp_arr.length != 0) {
+					temp_arr.pop();
+				}
+
+				test_input_pointer++;
+
+				if (test_input.length == test_input_pointer) {
+					for (let index = 0; index < temp_arr.length; index++) {
+						final_arr.push(temp_arr[index]);
+					}
+					break;
+				}
+			}
+			var trueFlag = 0;
+
+			for (let index = 0; index < final_arr.length; index++) {
+				if (final_arr[index].isAccept == true) {
+					trueFlag = 1;
+				}
+			}
+
+			if (trueFlag == 1) {
+				alert("TRUE");
+
+			}
+
+			else {
+
+				alert("FALSE");
+
+			}
+
+		}
+
+
+		function postfixConverter(user_input) {
+		    //I USED A POSTFIX CONVENTER ALGORITHM FROM INTERNET
+			//YOU CAN USE YOURS IF YOU WANT JUST DO NOT FORGET TO RETURN THE POSTFIX STATES ARRAY
+
+			var stack = [];
+
+			var postfix = [];
+
+			for (var i = 0; i < user_input.length; i++) {
+
+				switch (user_input[i]) {
+
+					case '*':
+						stack.push(user_input[i]);
+
+						break;
+
+					case '.':
+
+						while (stack.length != 0 || stack[stack.length - 1] == '*') {
+
+							postfix.push(stack.pop());
+
+						}
+						stack.push(user_input[i]);
+
+						break;
+
+					case '+':
+
+						while (stack.length != 0 && (stack[stack.length - 1] == '*' || stack[stack.length - 1] == '.')) {
+
+							postfix.push(stack.pop());
+
+						}
+
+						stack.push(user_input[i]);
+
+						break;
+
+					case '(':
+						stack.push(user_input[i]);
+						break;
+
+					case ')':
+
+						while (stack.length != 0 && stack[stack.length - 1] != '(') {
+							postfix.push(stack.pop());
+						}
+
+						if (stack.length != 0) {
+							stack.pop();
+						}
+						break;
+					default:
+						postfix.push(user_input[i]);
+						break;
+
+				}
+			}
+
+			if (stack.length != 0) {
+
+				while (stack.length != 0) {
+
+					postfix.push(stack.pop());
+
+				}
+			}
+			return postfix;
+		}
+
+		function createOperand(STATES, letter) {
+
+			var initialState = createState(false, true, letter);
+			var acceptState = createState(true, false, "");
+			initialState.next.push(acceptState);
+			initialState.exps.push(letter);
+			STATES.push(initialState);
+
+
+		}
+
+		function createState(isAcceptState, isInitialState, c_name) {
+
+			let state = {
+				isInitial: false,
+				isAccept: false,
+				exps: [],
+				next: [],
+				name: ""
+			}
+
+			tempState = Object.create(state);
+			tempState.isAccept = isAcceptState;
+			tempState.isInitial = isInitialState;
+			tempState.name = c_name;
+
+			console.log("STATE YARATILDI");
+
+			return tempState;
+
+		}
+
+		function star(state, state_arr) {
+			
+			var star_one = createState(true, true);
+			star_one.next.push(state);
+			star_one.exps.push("epsilon");
+			state.isInitial = false;
+			star_one.name = state.name + "*";
+			state.name = "";
+			for (let index = 0; index < state.next.length; index++) {
+				if (state.next[index].isAccept == true) {
+					state.next[index].next.push(state);
+					state.next[index].exps.push("epsilon");
+				}
+			}
+
+
+			for (let index = 0; index < state_arr.length; index++) {
+				if (state_arr[index] == state) {
+					state_arr[index] = star_one;
+					break;
+				}
+			}
+			console.log("star işlemi sonrası");
+			console.log(state_arr);
+
+		}
+		//concat done
+		function concat(state1, state2, state_arr) {
+
+			if (state1.isAccept == true) {
+
+				state1.next.push(state2);
+				state1.exps.push("epsilon");
+				state1.isAccept = false;
+
+			}
+
+			for (let index = 0; index < state1.next.length; index++) {
+				if (state1.next[index].isAccept == true) {
+					state1.next[index].next.push(state2);
+					state1.next[index].exps.push("epsilon");
+					state1.next[index].isAccept = false;
+
+				}
+			}
+
+			state1.name = "(" + state1.name + "." + state2.name + ")";
+			state2.name = "";
+			state2.isInitial = false;
+			var empty_index = 0;
+			for (let index = 0; index < state_arr.length; index++) {
+				if (state_arr[index] == state2) {
+					state_arr[index] == null;
+					empty_index = index;
+				}
+
+			}
+
+			for (let index = empty_index; index < state_arr.length - 1; index++) {
+
+				state_arr[index] = state_arr[index + 1];
+
+
+			}
+
+			state_arr.pop();
+
+			console.log("concat işlemi sonrası");
+			console.log(state_arr);
+		}
+		//union done
+		function union(state1, state2, state_arr) {
+
+			var union_one = createState(false, true, "");
+			union_one.next.push(state1);
+			union_one.exps.push("epsilon");
+			union_one.next.push(state2);
+			union_one.exps.push("epsilon");
+			console.log(state1.isAccept);
+			console.log(state1.name);
+			union_one.name = "(" + state1.name + "+" + state2.name + ")";
+			state1.name = "";
+			state2.name = "";
+			state1.isInitial = false;
+			state2.isInitial = false;
+
+			var first_element_position = 0;
+			var second_element_position = 0;
+
+			for (let index = 0; index < state_arr.length; index++) {
+				if (state_arr[index] == state1) {
+					state_arr[index] = union_one;
+					first_element_position = index;
+				}
+
+				else if (state_arr[index] == state2) {
+					second_element_position = index;
+				}
+			}
+
+			for (let index = second_element_position; index < state_arr.length; index++) {
+
+				state_arr[index] = state_arr[index + 1];
+
+			}
+
+			state_arr.pop();
+
+			console.log("Union sonrası");
+			console.log(state_arr);
+
+		}
+	</script>
+
+</body>
+
+</html>
